@@ -14,22 +14,25 @@ class ProcessTheClient(threading.Thread):
 
 	def run(self):
 		while True:
-			data = self.connection.recv(32)
-			data_string = data.decode()
-			if data:
-				data_front = data_string[:4]
-				data_back = data_string[-4:]
-				print(data_front, data_back)
-				if(data_front == 'TIME' and data_back == '1310'):
-					currentDateAndTime = datetime.now()
-					currentTime = currentDateAndTime.strftime("%H:%M:%S")
-					reply = "JAM " + currentTime + " 1310"
-					self.connection.sendall(reply.encode())
+			try:
+				data = self.connection.recv(32)
+				data_string = data.decode()
+				if data:
+					data_front = data_string[:4]
+					data_back = data_string[-4:]
+					print(data_front, data_back)
+					if(data_front == 'TIME' and data_back == '1310'):
+						currentDateAndTime = datetime.now()
+						currentTime = currentDateAndTime.strftime("%H:%M:%S")
+						reply = "JAM " + currentTime + " 1310"
+						self.connection.sendall(reply.encode())
+					else:
+						reply = "Request rejected"
+						self.connection.sendall(reply.encode())
 				else:
-					reply = "Request rejected"
-					self.connection.sendall(reply.encode())
-			else:
-				break
+					break
+			finally:
+				continue
 		self.connection.close()
 
 class Server(threading.Thread):
@@ -37,6 +40,7 @@ class Server(threading.Thread):
 		self.the_clients = []
 		self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		threading.Thread.__init__(self)
+		self.num_threads = 1
 
 	def run(self):
 		self.my_socket.bind(('0.0.0.0',45000))
@@ -44,7 +48,8 @@ class Server(threading.Thread):
 		while True:
 			self.connection, self.client_address = self.my_socket.accept()
 			logging.warning(f"connection from {self.client_address}")
-			
+			self.num_threads += 1
+			print("Number of created threads: " + str(self.num_threads))
 			clt = ProcessTheClient(self.connection, self.client_address)
 			clt.start()
 			self.the_clients.append(clt)
